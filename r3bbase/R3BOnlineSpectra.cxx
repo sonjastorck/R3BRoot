@@ -16,7 +16,9 @@
 #include "R3BPaddleTamexMappedData.h"
 #include "R3BPaddleCalData.h"
 #include "R3BPspxMappedData.h"
+#include "R3BPspxPrecalData.h"
 #include "R3BPspxCalData.h"
+#include "R3BPspxHitData.h"
 #include "R3BEventHeader.h"
 #include "R3BTCalEngine.h"
 
@@ -42,6 +44,8 @@ R3BOnlineSpectra::R3BOnlineSpectra()
     , fMappedItemsLos(NULL)
     , fMappedItemsTofd(NULL)
     , fMappedItemsPspx(NULL)
+    , fPrecalItemsPspx(NULL)
+    , fHitItemsPspx(NULL)
     , fTrigger(-1)
     , fNofPlanes(4)  
     , fPaddlesPerPlane(6)    
@@ -61,6 +65,8 @@ R3BOnlineSpectra::R3BOnlineSpectra(const char* name, Int_t iVerbose)
     , fMappedItemsLos(NULL)
     , fMappedItemsTofd(NULL)
     , fMappedItemsPspx(NULL)
+    , fPrecalItemsPspx(NULL)
+    , fHitItemsPspx(NULL)
     , fTrigger(-1)
     , fNofPlanes(4)  
     , fPaddlesPerPlane(6)    
@@ -177,20 +183,22 @@ InitStatus R3BOnlineSpectra::Init()
 
     // Pspx Data
     fMappedItemsPspx = (TClonesArray*)mgr->GetObject("PspxMappedData");
+    fPrecalItemsPspx = (TClonesArray*)mgr->GetObject("PspxPrecalData");
     fCalItemsPspx = (TClonesArray*)mgr->GetObject("PspxCalData");
+    fHitItemsPspx = (TClonesArray*)mgr->GetObject("PspxHitData");
     
-    for(UInt_t i=0;i<4;i++){
-          fh_pspx_strips_psp[i] = new TH1F(Form("pspx_strips_psp%d",i), Form("Pspx strips PSP %d",i+1), 16, 1, 17); 
+    for(UInt_t i=0;i<N_PSPX;i++){
+          fh_pspx_strips_x[i] = new TH1F(Form("pspx_strips_x%d",i), Form("Pspx x strips PSP %d",i+1), 32, 1, 33); 
+          fh_pspx_strips_y[i] = new TH1F(Form("pspx_strips_y%d",i), Form("Pspx y strips PSP %d",i+1), 32, 1, 33);
     
 	  fh_pspx_energy_psp[i] = new TH1F(Form("pspx_energy_psp%d",i), Form("Pspx cathode energy PSP %d",i+1), 200, 0, 35000); 
 	  
-	  fh_pspx_multiplicity_psp[i] = new TH1F(Form("pspx_multiplicity_psp%d",i), Form("Pspx multiplicity PSP %d",i+1), 10, 0, 10); 
+	  fh_pspx_multiplicity_x[i] = new TH1F(Form("pspx_multiplicity_x%d",i), Form("Pspx x multiplicity PSP %d",i+1), 10, 0, 10); 
+	  fh_pspx_multiplicity_y[i] = new TH1F(Form("pspx_multiplicity_y%d",i), Form("Pspx y multiplicity PSP %d",i+1), 10, 0, 10); 
     }
     
-    fh_pspx_strips_psp[0]->GetXaxis()->SetTitle("y position / strips with 3mm width");
-    fh_pspx_strips_psp[1]->GetXaxis()->SetTitle("x position / strips with 3mm width");
-    fh_pspx_strips_psp[2]->GetXaxis()->SetTitle("y position / strips with 3mm width");
-    fh_pspx_strips_psp[3]->GetXaxis()->SetTitle("x position / strips with 3mm width"); 
+    fh_pspx_strips_x[0]->GetXaxis()->SetTitle("x position / strips with 3mm width");
+    fh_pspx_strips_y[0]->GetXaxis()->SetTitle("y position / strips with 3mm width");
     
     fh_pspx_pos1_strips = new TH2F("pspx_pos1_strips", "Pspx Position1", 16, 1, 17,16,1,17); 
     fh_pspx_pos2_strips = new TH2F("pspx_pos2_strips", "Pspx Position2", 16, 1, 17,16,1,17);  
@@ -244,13 +252,9 @@ InitStatus R3BOnlineSpectra::Init()
     cpspx_strips->Divide(2, 2);
     
     cpspx_strips->cd(1);
-    fh_pspx_strips_psp[0]->Draw();
+    fh_pspx_strips_x[0]->Draw();
     cpspx_strips->cd(2);
-    fh_pspx_strips_psp[1]->Draw();
-    cpspx_strips->cd(3);
-    fh_pspx_strips_psp[2]->Draw();
-    cpspx_strips->cd(4);
-    fh_pspx_strips_psp[3]->Draw();
+    fh_pspx_strips_y[0]->Draw();
     cpspx_strips->cd(0);
     run->AddObject(cpspx_strips);
     
@@ -274,13 +278,9 @@ InitStatus R3BOnlineSpectra::Init()
     cpspx_multiplicity->Divide(2, 2);
     
     cpspx_multiplicity->cd(1);
-    fh_pspx_multiplicity_psp[0]->Draw();
+    fh_pspx_multiplicity_x[0]->Draw();
     cpspx_multiplicity->cd(2);
-    fh_pspx_multiplicity_psp[1]->Draw();
-    cpspx_multiplicity->cd(3);
-    fh_pspx_multiplicity_psp[2]->Draw();
-    cpspx_multiplicity->cd(4);
-    fh_pspx_multiplicity_psp[3]->Draw();
+    fh_pspx_multiplicity_y[0]->Draw();
     cpspx_multiplicity->cd(0);
     run->AddObject(cpspx_energy);
     
@@ -468,25 +468,9 @@ void R3BOnlineSpectra::Exec(Option_t* option)
 	  if(calData->GetStrip()==17){
 	    fh_pspx_energy_psp[0]->Fill(calData->GetEnergy1());  
 	  }
-	} else if(calData->GetDetector()==2){
-	  if(calData->GetStrip()==17){
-	    fh_pspx_energy_psp[1]->Fill(calData->GetEnergy1());  
-	  }
-	} else if(calData->GetDetector()==3){ 
-	  if(calData->GetStrip()==17){
-	    fh_pspx_energy_psp[2]->Fill(calData->GetEnergy1());  
-	  }
-	} else if(calData->GetDetector()==4){
-	  if(calData->GetStrip()==17){
-	    fh_pspx_energy_psp[3]->Fill(calData->GetEnergy1());  
-	  }
 	} 
       }
-      
-      fh_pspx_strips_psp[0]->Fill(max_strip[0]);  
-      fh_pspx_strips_psp[1]->Fill(max_strip[1]);  
-      fh_pspx_strips_psp[2]->Fill(max_strip[2]);  
-      fh_pspx_strips_psp[3]->Fill(max_strip[3]);  
+     
       
       if(max_energy1[0]!=0 && max_energy1[1]!=0){
 	  fh_pspx_pos1_strips->Fill(max_strip[1],max_strip[0]); 
@@ -519,32 +503,38 @@ void R3BOnlineSpectra::Exec(Option_t* option)
    
     if(fMappedItemsPspx)
     {
-      Int_t mult1=0;
-      Int_t mult2=0;
-      Int_t mult3=0;
-      Int_t mult4=0;
+      Int_t mult_1x=0;
+      Int_t mult_1y=0;
       
       Int_t nHits = fMappedItemsPspx->GetEntriesFast();    
       
       for (Int_t ihit = 0; ihit < nHits; ihit++)     
       {
 	R3BPspxMappedData *mappedData = (R3BPspxMappedData*)fMappedItemsPspx->At(ihit);
-	if(mappedData->GetDetector()==1){
-	  mult1++;
-	} else if(mappedData->GetDetector()==2){
-	  mult2++;
-	} else if(mappedData->GetDetector()==3){
-	  mult3++;
-	} else if(mappedData->GetDetector()==4){
-	  mult4++;
+	if(mappedData->GetDetector()==1 && mappedData->GetChannel()>64 && mappedData->GetChannel()<129){
+	  mult_1x++;
+	}else if(mappedData->GetDetector()==1 && mappedData->GetChannel()>0 && mappedData->GetChannel()<65){
+	  mult_1y++;
 	} 
 	
       }
-      fh_pspx_multiplicity_psp[0]->Fill(mult1);
-      fh_pspx_multiplicity_psp[1]->Fill(mult2);
-      fh_pspx_multiplicity_psp[2]->Fill(mult3);
-      fh_pspx_multiplicity_psp[3]->Fill(mult4);
+      fh_pspx_multiplicity_x[0]->Fill(mult_1x);
+      fh_pspx_multiplicity_y[0]->Fill(mult_1y);      
+    }
+    
+    if(fPrecalItemsPspx)
+    {      
+      Int_t nHits = fPrecalItemsPspx->GetEntriesFast();    
       
+      for (Int_t ihit = 0; ihit < nHits; ihit++)     
+      {
+	R3BPspxPrecalData *precalData = (R3BPspxPrecalData*)fPrecalItemsPspx->At(ihit);
+	if(precalData->GetDetector()==1 && precalData->GetStrip()>32 && precalData->GetStrip()<65){
+	  fh_pspx_strips_x[0]->Fill(precalData->GetStrip());
+	} else if(precalData->GetDetector()==1 && precalData->GetStrip()>0 && precalData->GetStrip()<33){
+	  fh_pspx_strips_y[0]->Fill(precalData->GetStrip());
+	} 
+      }      
     }
  
 }
@@ -571,9 +561,17 @@ void R3BOnlineSpectra::FinishEvent()
     {
         fMappedItemsPspx->Clear();
     }
-    if (fMappedItemsPspx)
+    if (fPrecalItemsPspx)
     {
-        fMappedItemsPspx->Clear();
+        fPrecalItemsPspx->Clear();
+    }
+    if (fCalItemsPspx)
+    {
+        fCalItemsPspx->Clear();
+    }
+    if (fHitItemsPspx)
+    {
+        fHitItemsPspx->Clear();
     }
 
 }

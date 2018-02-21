@@ -10,7 +10,7 @@
 #define R3BONLINESPECTRA
 #define N_PLANE_MAX 100
 #define N_PADDLE_MAX 100
-#define N_PSPX 4
+#define N_PSPX 1
 
 #include "FairTask.h"
 
@@ -112,7 +112,10 @@ class R3BOnlineSpectra : public FairTask
     TClonesArray* fMappedItemsTofd;                /**< Array with mapped items. */
     TClonesArray* fCalItemsTofd;                   /**< Array with cal items. */
     TClonesArray* fMappedItemsPspx;                    /**< Array with mapped items. */
-    TClonesArray* fCalItemsPspx;                    /**< Array with cal items. */
+    TClonesArray* fPrecalItemsPspx;                    /**< Array with cal items. */
+    TClonesArray* fCalItemsPspx;                    /**< Array with cal items. */    
+    TClonesArray* fHitItemsPspx;                    /**< Array with mapped items. */
+
     
 	// check for trigger should be done globablly (somewhere else)
     R3BEventHeader* header;                     /**< Event header. */
@@ -144,9 +147,11 @@ class R3BOnlineSpectra : public FairTask
     TH1F *fh_cherenkovLos3;    
 
     
-    TH1F *fh_pspx_strips_psp[N_PSPX];
+    TH1F *fh_pspx_strips_x[N_PSPX];
+    TH1F *fh_pspx_strips_y[N_PSPX];
     TH1F *fh_pspx_energy_psp[N_PSPX];
-    TH1F *fh_pspx_multiplicity_psp[N_PSPX];
+    TH1F *fh_pspx_multiplicity_x[N_PSPX];
+    TH1F *fh_pspx_multiplicity_y[N_PSPX];
     
     TH2F *fh_pspx_pos1_strips;
     TH2F *fh_pspx_pos2_strips;
