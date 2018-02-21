@@ -146,14 +146,17 @@ class R3BOnlineSpectra : public FairTask
     TH1F *fh_cherenkovLos2;    
     TH1F *fh_cherenkovLos3;    
 
-    
+    TH1F *fh_pspx_channel_x[N_PSPX];
+    TH1F *fh_pspx_channel_y[N_PSPX];
     TH1F *fh_pspx_strips_x[N_PSPX];
     TH1F *fh_pspx_strips_y[N_PSPX];
-    TH1F *fh_pspx_energy_psp[N_PSPX];
     TH1F *fh_pspx_multiplicity_x[N_PSPX];
     TH1F *fh_pspx_multiplicity_y[N_PSPX];
-    
-    TH2F *fh_pspx_pos1_strips;
+/*    
+    //TH1F *fh_pspx_energy1[N_PSPX]; // cal level not necessary fro KVI beamtime 
+    //TH1F *fh_pspx_energy2[N_PSPX];
+ 
+    TH2F *fh_pspx_pos1_strips; // online code from SDET 2016 experiment with 4 PSPX1 detectors 
     TH2F *fh_pspx_pos2_strips;
     TH2F *fh_pspx_pos1_energy;
     TH2F *fh_pspx_pos2_energy;
@@ -162,7 +165,8 @@ class R3BOnlineSpectra : public FairTask
     TH2F *fh_pspx_cor_y_strips;
     TH2F *fh_pspx_cor_x_energy;
     TH2F *fh_pspx_cor_y_energy;
-    
+ */
+ 
   public:
     ClassDef(R3BOnlineSpectra, 1)
 };

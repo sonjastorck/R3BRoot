@@ -103,8 +103,8 @@ InitStatus R3BOnlineSpectra::Init()
 	// get access to cal data
     fCalItemsLos = (TClonesArray*)mgr->GetObject("LosCal");
  
-    TCanvas *cLos = new TCanvas("Los", "LOS", 10, 10, 500, 500);
-    cLos->Divide(2, 2);
+    //TCanvas *cLos = new TCanvas("Los", "LOS", 10, 10, 500, 500);
+    //cLos->Divide(2, 2);
  
     fh_los_channels = new TH1F("los_channels", "LOS channels", 6, 0., 6.); 
     fh_los_tres = new TH1F("los_time_res", "LOS Time resolution", 4000, -2., 2.);
@@ -114,19 +114,19 @@ InitStatus R3BOnlineSpectra::Init()
     
     FairRunOnline *run = FairRunOnline::Instance();
     
-    cLos->cd(1);
+    /*cLos->cd(1);
     fh_los_channels->Draw();
     cLos->cd(2);
     fh_los_tres->Draw();
     cLos->cd(3);
     fh_los_pos->Draw();
     cLos->cd(0);
-    run->AddObject(cLos);
+    run->AddObject(cLos);*/
 
     fMappedItemsTofd = (TClonesArray*)mgr->GetObject("TofdMapped");
 
 
-    TCanvas *cTofd_planes = new TCanvas("TOFD_planes", "TOFD planes", 10, 10, 500, 500);
+    /*TCanvas *cTofd_planes = new TCanvas("TOFD_planes", "TOFD planes", 10, 10, 500, 500);
     cTofd_planes->Divide(3, 2);
 	
     for (Int_t j = 0; j < fNofPlanes; j++)
@@ -161,18 +161,18 @@ InitStatus R3BOnlineSpectra::Init()
             fhTotPm1[i][j]->Draw();
            
         }
-	}
+	}*/
 
     fCalItemsTofd = (TClonesArray*)mgr->GetObject("TofdCal");
 
-    TCanvas *cCherenkov = new TCanvas("Cherenkov", "Cherenkov", 10, 10, 500, 500);
-    cCherenkov->Divide(1, 3);
+    //TCanvas *cCherenkov = new TCanvas("Cherenkov", "Cherenkov", 10, 10, 500, 500);
+    //cCherenkov->Divide(1, 3);
  
     fh_cherenkovLos1 = new TH1F("cherenkovLos1", "Cherenkov 1 - Los", 10000, -100., 100.); 
     fh_cherenkovLos2 = new TH1F("cherenkovLos2", "Cherenkov 2 - Los", 10000, -100., 100.); 
     fh_cherenkovLos3 = new TH1F("cherenkovLos3", "Cherenkov average - Los", 10000, -100., 100.); 
    
-    cCherenkov->cd(1);
+    /*cCherenkov->cd(1);
     fh_cherenkovLos1->Draw();
     cCherenkov->cd(2);
     fh_cherenkovLos2->Draw();
@@ -180,7 +180,7 @@ InitStatus R3BOnlineSpectra::Init()
     fh_cherenkovLos3->Draw();
     cCherenkov->cd(0);
     run->AddObject(cCherenkov);
-
+*/
     // Pspx Data
     fMappedItemsPspx = (TClonesArray*)mgr->GetObject("PspxMappedData");
     fPrecalItemsPspx = (TClonesArray*)mgr->GetObject("PspxPrecalData");
@@ -188,115 +188,43 @@ InitStatus R3BOnlineSpectra::Init()
     fHitItemsPspx = (TClonesArray*)mgr->GetObject("PspxHitData");
     
     for(UInt_t i=0;i<N_PSPX;i++){
-          fh_pspx_strips_x[i] = new TH1F(Form("pspx_strips_x%d",i), Form("Pspx x strips PSP %d",i+1), 32, 1, 33); 
-          fh_pspx_strips_y[i] = new TH1F(Form("pspx_strips_y%d",i), Form("Pspx y strips PSP %d",i+1), 32, 1, 33);
-    
-	  fh_pspx_energy_psp[i] = new TH1F(Form("pspx_energy_psp%d",i), Form("Pspx cathode energy PSP %d",i+1), 200, 0, 35000); 
+      fh_pspx_strips_x[i] = new TH1F(Form("pspx_strips_x%d",i), Form("Pspx x strips PSP %d;x position / strips with 3mm width;Counts",i+1), 32, 1, 33); 
+      fh_pspx_strips_y[i] = new TH1F(Form("pspx_strips_y%d",i), Form("Pspx y strips PSP %d;y position / strips with 3mm width;Counts",i+1), 32, 1, 33);
 	  
 	  fh_pspx_multiplicity_x[i] = new TH1F(Form("pspx_multiplicity_x%d",i), Form("Pspx x multiplicity PSP %d",i+1), 10, 0, 10); 
 	  fh_pspx_multiplicity_y[i] = new TH1F(Form("pspx_multiplicity_y%d",i), Form("Pspx y multiplicity PSP %d",i+1), 10, 0, 10); 
+      
+      fh_pspx_channel_x[i] = new TH1F(Form("pspx_channel_x%d",i),Form("Pspx x channel PSP %d;x position / channel;Counts",i+1),64,1,65);
+      fh_pspx_channel_y[i] = new TH1F(Form("pspx_channel_y%d",i),Form("Pspx y channel PSP %d;y position / channel;Counts",i+1),64,1,65);
     }
     
-    fh_pspx_strips_x[0]->GetXaxis()->SetTitle("x position / strips with 3mm width");
-    fh_pspx_strips_y[0]->GetXaxis()->SetTitle("y position / strips with 3mm width");
-    
-    fh_pspx_pos1_strips = new TH2F("pspx_pos1_strips", "Pspx Position1", 16, 1, 17,16,1,17); 
-    fh_pspx_pos2_strips = new TH2F("pspx_pos2_strips", "Pspx Position2", 16, 1, 17,16,1,17);  
-    
-    fh_pspx_pos1_strips->GetYaxis()->SetTitle("y position / strips with 3mm width");
-    fh_pspx_pos1_strips->GetXaxis()->SetTitle("x position / strips with 3mm width"); 
-    fh_pspx_pos2_strips->GetYaxis()->SetTitle("y position / strips with 3mm width");
-    fh_pspx_pos2_strips->GetXaxis()->SetTitle("x position / strips with 3mm width");
-    
-    fh_pspx_pos1_energy = new TH2F("pspx_pos1_energy", "Pspx Position1", 32, -1, 1,32,-1,1); 
-    fh_pspx_pos2_energy = new TH2F("pspx_pos2_energy", "Pspx Position2", 32, -1, 1,32,-1,1);  
-    
-    fh_pspx_pos1_energy->GetYaxis()->SetTitle("y position / a.u.");
-    fh_pspx_pos1_energy->GetXaxis()->SetTitle("x position / a.u."); 
-    fh_pspx_pos2_energy->GetYaxis()->SetTitle("y position / a.u.");
-    fh_pspx_pos2_energy->GetXaxis()->SetTitle("x position / a.u.");
-    
-    
-    fh_pspx_cor_x_strips = new TH2F("pspx_cor_x_strips", "Pspx Position1", 16, 1, 17,16,1,17); 
-    fh_pspx_cor_y_strips = new TH2F("pspx_cor_y_strips", "Pspx Position2", 16, 1, 17,16,1,17);  
-    
-    fh_pspx_cor_x_strips->GetYaxis()->SetTitle("x position / strips with 3mm width");
-    fh_pspx_cor_x_strips->GetXaxis()->SetTitle("x position / strips with 3mm width"); 
-    fh_pspx_cor_y_strips->GetYaxis()->SetTitle("y position / strips with 3mm width");
-    fh_pspx_cor_y_strips->GetXaxis()->SetTitle("y position / strips with 3mm width");
-    
-    fh_pspx_cor_x_energy = new TH2F("pspx_cor_x_energy", "Pspx Position1", 32, -1, 1,32,-1,1); 
-    fh_pspx_cor_y_energy = new TH2F("pspx_cor_y_energy", "Pspx Position2", 32, -1, 1,32,-1,1);  
-    
-    fh_pspx_cor_x_energy->GetYaxis()->SetTitle("x position / a.u.");
-    fh_pspx_cor_x_energy->GetXaxis()->SetTitle("x position / a.u."); 
-    fh_pspx_cor_y_energy->GetYaxis()->SetTitle("y position / a.u.");
-    fh_pspx_cor_y_energy->GetXaxis()->SetTitle("y position / a.u.");
-    
-    TCanvas *cpspx_position = new TCanvas("pspx_position", "pspx_position", 10, 10, 500, 500);
-    cpspx_position->Divide(2, 2);
-    
-    cpspx_position->cd(1);
-    fh_pspx_pos1_strips->Draw();
-    cpspx_position->cd(2);
-    fh_pspx_pos2_strips->Draw();
-    cpspx_position->cd(3);
-    fh_pspx_pos1_energy->Draw();
-    cpspx_position->cd(4);
-    fh_pspx_pos2_energy->Draw();
-    cpspx_position->cd(0);
-    run->AddObject(cpspx_position);
-    
-    
-    TCanvas *cpspx_strips = new TCanvas("pspx_strips", "pspx_strips", 10, 10, 500, 500);
-    cpspx_strips->Divide(2, 2);
-    
-    cpspx_strips->cd(1);
-    fh_pspx_strips_x[0]->Draw();
-    cpspx_strips->cd(2);
-    fh_pspx_strips_y[0]->Draw();
-    cpspx_strips->cd(0);
-    run->AddObject(cpspx_strips);
-    
-    
-    TCanvas *cpspx_energy = new TCanvas("pspx_energy", "pspx_energy", 10, 10, 500, 500);
-    cpspx_energy->Divide(2, 2);
-    
-    cpspx_energy->cd(1);
-    fh_pspx_energy_psp[0]->Draw();
-    cpspx_energy->cd(2);
-    fh_pspx_energy_psp[1]->Draw();
-    cpspx_energy->cd(3);
-    fh_pspx_energy_psp[2]->Draw();
-    cpspx_energy->cd(4);
-    fh_pspx_energy_psp[3]->Draw();
-    cpspx_energy->cd(0);
-    run->AddObject(cpspx_energy);
-    
-    
-    TCanvas *cpspx_multiplicity = new TCanvas("pspx_multiplicity", "pspx_multiplicity", 10, 10, 500, 500);
+    TCanvas *cpspx_multiplicity = new TCanvas("pspx_mapped", "pspx_mapped", 10, 10, 500, 500);
     cpspx_multiplicity->Divide(2, 2);
     
     cpspx_multiplicity->cd(1);
     fh_pspx_multiplicity_x[0]->Draw();
     cpspx_multiplicity->cd(2);
     fh_pspx_multiplicity_y[0]->Draw();
+    
+    cpspx_multiplicity->cd(3);
+    fh_pspx_channel_x[0]->Draw();
+    cpspx_multiplicity->cd(4);
+    fh_pspx_channel_y[0]->Draw();
+    
     cpspx_multiplicity->cd(0);
-    run->AddObject(cpspx_energy);
+    run->AddObject(cpspx_multiplicity);
     
-    TCanvas *cpspx_cor = new TCanvas("pspx_cor", "pspx_cor", 10, 10, 500, 500);
-    cpspx_cor->Divide(2, 2);
     
-    cpspx_cor->cd(1);
-    fh_pspx_cor_x_strips->Draw();
-    cpspx_cor->cd(2);
-    fh_pspx_cor_y_strips->Draw();
-    cpspx_cor->cd(3);
-    fh_pspx_cor_x_energy->Draw();
-    cpspx_cor->cd(4);
-    fh_pspx_cor_y_energy->Draw();
+    TCanvas *cpspx_strips = new TCanvas("pspx_precal", "pspx_precal", 10, 10, 500, 500);
+    cpspx_strips->Divide(2, 2);
+    
+    cpspx_strips->cd(1);
+    fh_pspx_strips_x[0]->Draw();
+    cpspx_strips->cd(2);
+    fh_pspx_strips_y[0]->Draw();
+    
     cpspx_strips->cd(0);
-    run->AddObject(cpspx_cor);
+    run->AddObject(cpspx_strips);
     
     return kSUCCESS;
 }
@@ -305,7 +233,7 @@ InitStatus R3BOnlineSpectra::Init()
 
 void R3BOnlineSpectra::Exec(Option_t* option)
 {
-    Double_t timeLos=0.;
+ /*   Double_t timeLos=0.;
     Double_t cher1=0.;
     Double_t cher2=0.;
     Double_t cher3=0.;
@@ -447,12 +375,12 @@ void R3BOnlineSpectra::Exec(Option_t* option)
 
    }
 
-    if(fCalItemsPspx)
+    if(fCalItemsPspx) //online code from SDET 2016 experiment with 4 PSPX1 detectors 
     {      
       Int_t nHits = fCalItemsPspx->GetEntriesFast();    
-      Double_t max_energy1[4] = {0,0,0,0};
-      Double_t max_energy2[4] = {0,0,0,0};
-      Double_t max_strip[4] = {0,0,0,0};
+      Double_t max_energy1[N_PSPX] = {0,0,0,0};
+      Double_t max_energy2[N_PSPX] = {0,0,0,0};
+      Double_t max_strip[N_PSPX] = {0,0,0,0};
       
       for (Int_t ihit = 0; ihit < nHits; ihit++)     
       {
@@ -465,9 +393,8 @@ void R3BOnlineSpectra::Exec(Option_t* option)
 	
 	
 	if(calData->GetDetector()==1){
-	  if(calData->GetStrip()==17){
-	    fh_pspx_energy_psp[0]->Fill(calData->GetEnergy1());  
-	  }
+	    fh_pspx_energy1[0]->Fill(calData->GetEnergy1());  
+        fh_pspx_energy2[0]->Fill(calData->GetEnergy2());
 	} 
       }
      
@@ -499,7 +426,7 @@ void R3BOnlineSpectra::Exec(Option_t* option)
       }
       
     }
-
+*/
    
     if(fMappedItemsPspx)
     {
@@ -510,16 +437,18 @@ void R3BOnlineSpectra::Exec(Option_t* option)
       
       for (Int_t ihit = 0; ihit < nHits; ihit++)     
       {
-	R3BPspxMappedData *mappedData = (R3BPspxMappedData*)fMappedItemsPspx->At(ihit);
-	if(mappedData->GetDetector()==1 && mappedData->GetChannel()>64 && mappedData->GetChannel()<129){
-	  mult_1x++;
-	}else if(mappedData->GetDetector()==1 && mappedData->GetChannel()>0 && mappedData->GetChannel()<65){
-	  mult_1y++;
-	} 
-	
-      }
+        R3BPspxMappedData *mappedData = (R3BPspxMappedData*)fMappedItemsPspx->At(ihit);
+        if(mappedData->GetDetector()==1 && mappedData->GetChannel()>64 && mappedData->GetChannel()<129){
+            mult_1x++;
+            fh_pspx_channel_x[0]->Fill(mappedData->GetChannel());
+        }else if(mappedData->GetDetector()==1 && mappedData->GetChannel()>0 && mappedData->GetChannel()<65){
+            mult_1y++;
+            fh_pspx_channel_y[0]->Fill(mappedData->GetChannel());
+        } 
       fh_pspx_multiplicity_x[0]->Fill(mult_1x);
-      fh_pspx_multiplicity_y[0]->Fill(mult_1y);      
+      fh_pspx_multiplicity_y[0]->Fill(mult_1y);
+      }
+      
     }
     
     if(fPrecalItemsPspx)
@@ -528,12 +457,12 @@ void R3BOnlineSpectra::Exec(Option_t* option)
       
       for (Int_t ihit = 0; ihit < nHits; ihit++)     
       {
-	R3BPspxPrecalData *precalData = (R3BPspxPrecalData*)fPrecalItemsPspx->At(ihit);
-	if(precalData->GetDetector()==1 && precalData->GetStrip()>32 && precalData->GetStrip()<65){
-	  fh_pspx_strips_x[0]->Fill(precalData->GetStrip());
-	} else if(precalData->GetDetector()==1 && precalData->GetStrip()>0 && precalData->GetStrip()<33){
-	  fh_pspx_strips_y[0]->Fill(precalData->GetStrip());
-	} 
+        R3BPspxPrecalData *precalData = (R3BPspxPrecalData*)fPrecalItemsPspx->At(ihit);
+        if(precalData->GetDetector()==1 && precalData->GetStrip()>32 && precalData->GetStrip()<65){
+            fh_pspx_strips_x[0]->Fill(precalData->GetStrip());
+        } else if(precalData->GetDetector()==1 && precalData->GetStrip()>0 && precalData->GetStrip()<33){
+            fh_pspx_strips_y[0]->Fill(precalData->GetStrip());
+        } 
       }      
     }
  
