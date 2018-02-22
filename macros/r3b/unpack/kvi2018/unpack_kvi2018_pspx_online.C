@@ -28,9 +28,9 @@ void unpack_kvi2018_pspx_online(Int_t RunId=181)
     /* Create source using ucesb for input ------------------ */
  
     //TString filename = "stream://lxfs186:8000";
-   // TString filename = "stream://lipc-1:8000";
-    TString filename = "/home/land/PSPX/lmd/source_notraces_180221_0482.lmd"; //"+runNumber+"_*
-    TString outputFileName = "/home/land/PSPX/rootfiles/source_notraces_180221_win80_pspx_online.root";
+    TString filename = "stream://192.168.1.41:8000"; //ip of lipc-1
+   // TString filename = "/home/land/PSPX/lmd/source_notraces_180221_0482.lmd"; //"+runNumber+"_*
+    TString outputFileName = "/home/land/PSPX/rootfiles/source_notraces_180221_win160_pspx_online.root";
     TString ntuple_options = "UNPACK:EVENTNO,UNPACK:TRIGGER,RAW,PSPX";
     TString ucesb_dir = getenv("UCESB_DIR");
     TString ucesb_path = ucesb_dir + "/../upexps/kvi2018/kvi2018";
