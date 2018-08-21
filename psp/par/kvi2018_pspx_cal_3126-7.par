@@ -23,7 +23,7 @@ R3BPspxCalStripsPerDetector: Int_t \
 R3BPspxCalOrientationOfDetector: Int_t \
 3
 R3BPspxCalGainForStrips: Float_t  \
-6.0 32.0 \
+1.0 32.0 \
   1.0 1.0 \
   2.0 1.0 \
   3.0 1.0 \
