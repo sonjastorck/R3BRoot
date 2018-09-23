@@ -38,6 +38,7 @@
 #include "FairRunOnline.h"
 #include "FairRuntimeDb.h"
 #include "TCanvas.h"
+#include "TGaxis.h"
 #include "TH1F.h"
 #include "TH2F.h"
 #include "THttpServer.h"
@@ -830,7 +831,9 @@ InitStatus R3BOnlineSpectra::Init()
     fHitItemsPspx = (TClonesArray*)mgr->GetObject("PspxHitData");
 
     TCanvas* cPspx_comp = new TCanvas("Pspx_comp", "Pspx Comparison", 10, 10, 1100, 1000);
-    cPspx_comp->Divide(4, 3);
+    cPspx_comp->Divide(N_PSPX, 3);
+
+    Int_t Emax = 2000;
 
     if (fMappedItemsPspx)
     {
@@ -915,28 +918,28 @@ InitStatus R3BOnlineSpectra::Init()
         }
 
         TCanvas* cPspx_strips = new TCanvas("Pspx_strips", "Pspx Strips", 10, 10, 1100, 1000);
-        cPspx_strips->Divide(4, 2);
+        cPspx_strips->Divide(N_PSPX, 2);
 
         for (UInt_t i = 0; i < N_PSPX; i++)
         {
-            cPspx_strips->cd(i * 2 + 1);
+            cPspx_strips->cd(i + 1);
             fh_pspx_channel_x[i]->Draw();
 
-            cPspx_strips->cd(i * 2 + 2);
+            cPspx_strips->cd(i + 1 + N_PSPX);
             fh_pspx_channel_y[i]->Draw();
         }
 
         run->AddObject(cPspx_strips);
 
         TCanvas* cPspx_multiplicity = new TCanvas("Pspx_multiplicity", "Pspx Multiplicity", 10, 10, 1100, 1000);
-        cPspx_multiplicity->Divide(4, 2);
+        cPspx_multiplicity->Divide(N_PSPX, 2);
 
         for (UInt_t i = 0; i < N_PSPX; i++)
         {
-            cPspx_multiplicity->cd(i * 2 + 1);
+            cPspx_multiplicity->cd(i + 1);
             fh_pspx_multiplicity_x[i]->Draw();
 
-            cPspx_multiplicity->cd(i * 2 + 2);
+            cPspx_multiplicity->cd(i + 1 + N_PSPX);
             fh_pspx_multiplicity_y[i]->Draw();
         }
 
@@ -947,13 +950,31 @@ InitStatus R3BOnlineSpectra::Init()
         {
             cPspx_comp->cd(i + 1);
             fh_pspx_strips_position[i]->Draw("colz");
+
+            // Remove the current axis
+            fh_pspx_strips_position[i]->GetYaxis()->SetLabelOffset(999);
+            fh_pspx_strips_position[i]->GetYaxis()->SetTickLength(0);
+
+            // Redraw the new inverted axis
+            gPad->Update();
+            TGaxis* newaxis = new TGaxis(gPad->GetUxmin(),
+                                         gPad->GetUymax(),
+                                         gPad->GetUxmin() - 0.001,
+                                         gPad->GetUymin(),
+                                         fh_pspx_strips_position[i]->GetYaxis()->GetXmin(),
+                                         fh_pspx_strips_position[i]->GetYaxis()->GetXmax(),
+                                         510,
+                                         "+");
+            newaxis->SetLabelOffset(0.003);
+            newaxis->SetLabelSize(0.03);
+            newaxis->SetTickLength(0.025);
+            newaxis->Draw();
         }
     }
 
     if (fCalItemsPspx)
     {
         UInt_t nbins = 100;
-        Int_t Emax = 1000000;
 
         for (UInt_t i = 0; i < (N_PSPX + 1) / 2; i++)
         {
@@ -971,7 +992,7 @@ InitStatus R3BOnlineSpectra::Init()
         // Fill cPspx_comp with Cal level data
         for (UInt_t i = 0; i < (N_PSPX + 1) / 2; i++)
         {
-            cPspx_comp->cd(i * 2 + 5);
+            cPspx_comp->cd(i * 2 + 1 + N_PSPX);
             fh_pspx_cal_energy_frontback[i]->Draw("colz");
         }
     }
@@ -980,7 +1001,6 @@ InitStatus R3BOnlineSpectra::Init()
     {
         UInt_t nbins = 100;
         UInt_t length = 10;
-        Int_t Emax = 1000000;
 
         for (UInt_t i = 0; i < (N_PSPX + 1) / 2; i++)
         {
@@ -998,24 +1018,24 @@ InitStatus R3BOnlineSpectra::Init()
         }
 
         TCanvas* cPspx_hit = new TCanvas("Pspx_hit", "Pspx Hit", 10, 10, 1100, 1000);
-        cPspx_hit->Divide(2, 2);
+        cPspx_hit->Divide((N_PSPX + 1) / 2, 2);
 
         for (UInt_t i = 0; i < (N_PSPX + 1) / 2; i++)
         {
-            cPspx_hit->cd(i * 2 + 1);
+            cPspx_hit->cd(i + 1);
             fh_pspx_hit_position[i]->Draw("colz");
 
-            cPspx_hit->cd(i * 2 + 2);
+            cPspx_hit->cd(i + 1 + (N_PSPX + 1) / 2);
             fh_pspx_hit_energy[i]->Draw();
         }
 
         run->AddObject(cPspx_hit);
 
-        // Fill cPspx_comp with Cal level data
+        // Fill cPspx_comp with Hit level data
         for (UInt_t i = 0; i < (N_PSPX + 1) / 2; i++)
         {
-            cPspx_comp->cd(i * 2 + 9);
-            fh_pspx_hit_position[i]->Draw();
+            cPspx_comp->cd(i * 2 + 2 * N_PSPX + 1); // supposed to be +2 if energy and position readout is used
+            fh_pspx_hit_position[i]->Draw("colz");
         }
     }
 
@@ -2190,7 +2210,11 @@ void R3BOnlineSpectra::Exec(Option_t* option)
                 (channel_x[i][0] == channel_x[i][1] + 1 || channel_x[i][0] == channel_x[i][1] - 1) &&
                 (channel_y[i][0] == channel_y[i][1] + 1 || channel_y[i][0] == channel_y[i][1] - 1))
             {
-                fh_pspx_strips_position[i]->Fill((channel_x[i][0] + 1) / 2, (channel_y[i][0] + 1) / 2);
+                fh_pspx_strips_position[i]->Fill((channel_x[i][0] + 1) / 2,
+                                                 -((channel_y[i][0] + 1) / 2) + 3 * N_STRIPS_PSPX +
+                                                     1); // with inverted axis to account for orientation
+                // fh_pspx_strips_position[i]->Fill((channel_x[i][0] + 1) / 2, ((channel_y[i][0] + 1) / 2)); //without
+                // inverted axis => wrong orientation y axis
             }
 
             for (Int_t j = 0; j < mult_x[i]; j++)
