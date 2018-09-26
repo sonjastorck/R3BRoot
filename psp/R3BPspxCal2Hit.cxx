@@ -29,11 +29,12 @@ R3BPspxCal2Hit::R3BPspxCal2Hit()
 {
 }
 
-R3BPspxCal2Hit::R3BPspxCal2Hit(const char* name, Int_t iVerbose)
+R3BPspxCal2Hit::R3BPspxCal2Hit(const char* name, Int_t iVerbose, Float_t range)
     : FairTask(name, iVerbose)
     , fCalItems(NULL)
     , fHitItems(new TClonesArray("R3BPspxHitData"))
 {
+    rangeE = range;
 }
 
 R3BPspxCal2Hit::~R3BPspxCal2Hit() {}
@@ -210,9 +211,6 @@ void R3BPspxCal2Hit::Exec(Option_t* option)
     UShort_t mult_y[fHitPar->GetPspxParDetector()];
     UShort_t mult_e[fHitPar->GetPspxParDetector()];
 
-    Float_t rangeE = 0.1; // TODO make this value a parameter. in parameter file? detector specific? or just somewhere
-                          // in unpack macro?
-
     UShort_t nstrips;
     UShort_t strip;
     UShort_t strip1;
@@ -312,11 +310,9 @@ void R3BPspxCal2Hit::Exec(Option_t* option)
         else if (mult_e[detector] == 0 && mult_x[detector] != 0 && mult_y[detector] != 0) // detector type X5
         {
             // be carefull: energy_x is negative
-            if ((-energy_x[detector] < (1 + rangeE) * energy_y[detector] &&
-                 -energy_x[detector] > (1 - rangeE) * energy_y[detector]) ||
-                (energy_y[detector] < -(1 + rangeE) * energy_x[detector] &&
-                 energy_y[detector] >
-                     -(1 - rangeE) * energy_x[detector])) // energy on front and back have the same energy
+            if ((std::abs(energy_x[detector] + energy_y[detector]) < rangeE * energy_y[detector]) ||
+                (std::abs(energy_x[detector] + energy_y[detector]) <
+                 rangeE * energy_x[detector])) // energy on front and back have the same energy
             {
                 // LOG(INFO) << "R3BPspxCal2Hit " << detector << " " << -energy_x[detector] << " " << energy_y[detector]
                 // << FairLogger::endl;
@@ -366,7 +362,7 @@ void R3BPspxCal2Hit::Exec(Option_t* option)
                         {
                             v = (strip - 1.5 * nstrips - 0.5) / (nstrips / 2.);
                             y = sign_strip_y[detector] * v * fHitPar->GetPspxParLength().At(detector) / 2.;
-                            sigma_y = 1; // TODO sigma=width/sqrt(12), set width or read from parameter file?
+                            sigma_y = 1; // TODO rms=width/sqrt(12), set width or read from parameter file?
                         }
                     }
                 }

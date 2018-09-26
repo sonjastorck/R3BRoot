@@ -31,7 +31,7 @@ class R3BPspxCal2Hit : public FairTask
     /** Default Constructor **/
     R3BPspxCal2Hit();
     /** Standard Constructor **/
-    R3BPspxCal2Hit(const char* name, Int_t iVerbose);
+    R3BPspxCal2Hit(const char* name, Int_t iVerbose, Float_t range);
     /** Destructor **/
     virtual ~R3BPspxCal2Hit();
 
@@ -56,6 +56,8 @@ class R3BPspxCal2Hit : public FairTask
     std::vector<Short_t> sign_pos_y;
     std::vector<Short_t> sign_strip_x;
     std::vector<Short_t> sign_strip_y;
+
+    Float_t rangeE;
 
     // void CreateHistos();
     // void WriteHistos();

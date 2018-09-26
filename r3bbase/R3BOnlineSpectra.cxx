@@ -974,7 +974,7 @@ InitStatus R3BOnlineSpectra::Init()
 
     if (fCalItemsPspx)
     {
-        UInt_t nbins = 100;
+        UInt_t nbins = 200;
 
         for (UInt_t i = 0; i < (N_PSPX + 1) / 2; i++)
         {
@@ -1000,7 +1000,7 @@ InitStatus R3BOnlineSpectra::Init()
     if (fHitItemsPspx)
     {
         UInt_t nbins = 100;
-        UInt_t length = 10;
+        UInt_t length = 10; // detector length, range of histogram
 
         for (UInt_t i = 0; i < (N_PSPX + 1) / 2; i++)
         {
@@ -1031,10 +1031,12 @@ InitStatus R3BOnlineSpectra::Init()
 
         run->AddObject(cPspx_hit);
 
-        // Fill cPspx_comp with Hit level data
+        // Fill cPspx_comp with Hit level data-((channel_y[i][0] + 1) / 2) + 3 * N_STRIPS_PSPX + 1)
         for (UInt_t i = 0; i < (N_PSPX + 1) / 2; i++)
         {
-            cPspx_comp->cd(i * 2 + 2 * N_PSPX + 1); // supposed to be +2 if energy and position readout is used
+            cPspx_comp->cd(i * 2 + 2 * N_PSPX + 1); // supposed to be +2 if
+                                                    // energy and position
+                                                    // readout is used
             fh_pspx_hit_position[i]->Draw("colz");
         }
     }
