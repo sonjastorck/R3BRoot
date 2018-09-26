@@ -29,7 +29,7 @@ R3BPspxHitOrientationYSignOfDetector: Int_t \
 R3BPspxHitLengthOfDetector: Float_t \
 10.0
 R3BPspxHitLinearParamForStrips: Float_t  \
-6.0 32.0 \
+1.0 32.0 \
   1.0 0.0 5.0 \
   2.0 0.0 5.0 \
   3.0 0.0 5.0 \

@@ -38,8 +38,10 @@
 geometry/neuland_v2_*.root
 build/
 input/
+macros/
 
 sofia/
 
 glad-tpc/
 
+frs/

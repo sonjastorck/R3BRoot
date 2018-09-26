@@ -36,7 +36,8 @@
 
 
 
-#define LOS_COINC_WINDOW_NS 20       
+#define LOS_COINC_WINDOW_V_NS 280 
+#define LOS_COINC_WINDOW_T_NS 50 // Same as VFTX, as leading and trailing times are separately treated  
 #define IS_NAN(x) TMath::IsNaN(x)
 
 
@@ -50,6 +51,7 @@ R3BLosMapped2Cal::R3BLosMapped2Cal()
     , fTcalPar(NULL)
     , fTrigger(-1)
     , fClockFreq(1. / VFTX_CLOCK_MHZ * 1000.)
+    , fNEvent(0)
 {
 }
 
@@ -63,6 +65,7 @@ R3BLosMapped2Cal::R3BLosMapped2Cal(const char* name, Int_t iVerbose)
     , fTcalPar(NULL)
     , fTrigger(-1)
     , fClockFreq(1. / VFTX_CLOCK_MHZ * 1000.)
+    , fNEvent(0)
 {
 }
 
@@ -97,15 +100,20 @@ InitStatus R3BLosMapped2Cal::Init()
 
 	// get access to Mapped data
     fMappedItems = (TClonesArray*)mgr->GetObject("LosMapped");
+ 
+    
     if (NULL == fMappedItems)
         FairLogger::GetLogger()->Fatal(MESSAGE_ORIGIN, "Branch LosMapped not found");
 
 
 	// request storage of Cal data in output tree
     mgr->Register("LosCal", "Land", fCalItems, kTRUE);
+    fCalItems->Clear();
     
     return kSUCCESS;
 }
+
+
 
 // Note that the container may still be empty at this point.
 void R3BLosMapped2Cal::SetParContainers()
@@ -127,142 +135,341 @@ InitStatus R3BLosMapped2Cal::ReInit()
 
 void R3BLosMapped2Cal::Exec(Option_t* option)
 {
-   // check for requested trigger (Todo: should be done globablly / somewhere else)
-   if ((fTrigger >= 0) && (header) && (header->GetTrigger() != fTrigger))
+	// check for requested trigger (Todo: should be done globablly / somewhere else)
+	if ((fTrigger >= 0) && (header) && (header->GetTrigger() != fTrigger))
 		return;
 
-//cout << "Trial" << endl;
-   Int_t nHits = fMappedItems->GetEntriesFast();
-   for (Int_t ihit = 0; ihit < nHits; ihit++)
-    {
-       R3BLosMappedData* hit = (R3BLosMappedData*)fMappedItems->At(ihit);
-       if (!hit) continue;
+	Int_t nHits = fMappedItems->GetEntriesFast();
 
-       // channel numbers are stored 1-based (1..n)
-       Int_t iDet = hit->GetDetector(); // 1..
-       Int_t iCha = hit->GetChannel();  // 1..
-//       cout<<"Haik Test 2: "<<iDet<<"  "<<iCha<<endl; 
-       UInt_t module = (iDet-1) * fNofChannels + (iCha-1); // channel index in TCalPar 0..
-       
-	   if ((iDet<1) || (iDet>fNofDetectors))
-	   {
-           LOG(INFO) << "R3BLosMapped2Cal::Exec : Detector number out of range: " << 
-           iDet << FairLogger::endl;
-           continue;
-       }
-       
-	   // Fetch calib data for current channel
-       //R3BTCalModulePar* par = fMapPar[module]; // calibration data for cur ch
-       // new: 
-       R3BTCalModulePar* par = fTcalPar->GetModuleParAt(iDet, iCha, 1);
+
+	for (Int_t ihit = 0; ihit < nHits; ihit++)  // nHits = Nchannel_LOS * NTypes = 4 or 8 * 3
+	{
+				
+		R3BLosMappedData* hit = (R3BLosMappedData*)fMappedItems->At(ihit);
+		if (!hit) continue;
+
+		// channel numbers are stored 1-based (1..n)
+		UInt_t iDet  = hit->GetDetector(); // 1..
+		UInt_t iCha  = hit->GetChannel();  // 1..
+		UInt_t iType = hit->GetType();     // 0,1,2
+
+	//	if(nHits == 48 && iType ==1) cout<<"R3BLosMapped2Cal: Channel "<<iCha<<", type "<<iType<<", nHits "<<nHits<<", ihit "<<ihit<<", timeFine "<<hit->GetTimeFine()<<endl;
+         
+
+		if ((iDet<1) || (iDet>fNofDetectors))
+		{
+			LOG(INFO) << "R3BLosMapped2Cal::Exec : Detector number out of range: " << 
+				iDet << FairLogger::endl;
+			continue;
+		}
+
+		// Fetch calib data for current channel
+		// new: 
+
+		R3BTCalModulePar* par = fTcalPar->GetModuleParAt(iDet, iCha, iType+1);
+
+		if (!par)
+		{
+			LOG(INFO) << "R3BLosMapped2Cal::Exec : Tcal par not found, Detector: " << 
+				iDet << ", Channel: " << iCha << ", Type: "<<iType<< FairLogger::endl;
+			continue;
+		}
+
+		// Convert TDC to [ns] ...
+
+		Double_t times_raw_ns = par->GetTimeVFTX( hit->GetTimeFine() );
+
+		if (times_raw_ns < 0. || times_raw_ns > fClockFreq || IS_NAN(times_raw_ns) )
+		{
+
+			LOG(INFO) << 
+				"R3BLosMapped2Cal::Exec : Bad time in ns: det= " << iDet << 
+				", ch= " << iCha << 
+				", type= "<< iType <<
+				", time in channels = " << hit->GetTimeFine() <<
+				", time in ns = " << times_raw_ns  << FairLogger::endl;
+			continue;
+		}
+
+		// ... and add clock time
+		Double_t times_ns = fClockFreq-times_raw_ns + hit->GetTimeCoarse() * fClockFreq;
+		
+   
+    
+		/* Note: we have multi-hit data...
+		 *  
+		 * So the map needs to have one item per detector and (multi-)hit
+		 * Then we need to establish a time window
+		 * Here, we have the hits unsorted in time and channel. If we 
+		 * reconstruct a detector hit using a time window, So:
+		 * 
+		 * For each single hit, search the list of detector hits. If a
+		 * matching hit is found (dt < window and item not yet set), add
+		 * item. Else create new detector hit.
+		 * 
+		 * This way, we theoretically *might* end up with two calItems 
+		 * which are actually just one. Hm... this should be very rare. 
+		 * Care about that later if it becomes necessary. 
+		 * 
+		 */
+
+ 		// see if there is already a detector hit around that time 
+		R3BLosCalData* calItem=NULL;
+
+		int iCal;
+		for (iCal=0;iCal<fNofCalItems;iCal++)
+		{
+			R3BLosCalData* aCalItem=(R3BLosCalData*)fCalItems->At(iCal);
+
+			if (aCalItem->GetDetector() != iDet) {
+				// Do not consider an item for another detector.
+				continue;
+			}
+            
+			Double_t  LOS_COINC_WINDOW_NS;
+			Double_t Tdev;
+			Bool_t LOS_COINC = false;
+			
+			if(iType == 0) {
+				LOS_COINC_WINDOW_NS = LOS_COINC_WINDOW_V_NS;
+				Tdev = fabs(aCalItem->GetMeanTimeVFTX()-times_ns);
+				if(Tdev < LOS_COINC_WINDOW_NS) LOS_COINC = true;	
+			}	
+			if(iType == 1 ) {
+				LOS_COINC_WINDOW_NS = LOS_COINC_WINDOW_T_NS;   
+                Tdev = fabs(aCalItem->GetMeanTimeTAMEXL()-times_ns);
+                if(Tdev < LOS_COINC_WINDOW_NS && aCalItem->GetTAMEXLNcha() > 0 ) LOS_COINC = true;
+                if(IS_NAN(Tdev) && aCalItem->GetTAMEXLNcha() == 0) LOS_COINC = true; // First Tamex leading time
+            }
+			if(iType == 2) {
+				LOS_COINC_WINDOW_NS = LOS_COINC_WINDOW_T_NS;   
+                Tdev = fabs(aCalItem->GetMeanTimeTAMEXT()-times_ns);               
+                if(Tdev < LOS_COINC_WINDOW_NS && aCalItem->GetTAMEXTNcha() > 0 ) LOS_COINC = true;
+                if(IS_NAN(Tdev) && aCalItem->GetTAMEXTNcha() == 0) LOS_COINC = true; // First Tamex trailing time
+            }            
+         
+			if(LOS_COINC){
+				// check if item is already set. If so, we need to skip this event!
+				switch (iCha)
+				{
+
+					case 1 : {
+							 if (iType == 0 && !IS_NAN(aCalItem->fTimeV_lt_ns))  goto skip_event_pileup;
+							 if (iType == 1 && !IS_NAN(aCalItem->fTimeL_lt_ns))  goto skip_event_pileup;
+							 if (iType == 2 && !IS_NAN(aCalItem->fTimeT_lt_ns))  goto skip_event_pileup;
+						 } break;
+					case 3 : {
+							 if (iType == 0 && !IS_NAN(aCalItem->fTimeV_lb_ns))  goto skip_event_pileup;
+							 if (iType == 1 && !IS_NAN(aCalItem->fTimeL_lb_ns))  goto skip_event_pileup;
+							 if (iType == 2 && !IS_NAN(aCalItem->fTimeT_lb_ns))  goto skip_event_pileup;
+						 } break;
+					case 5 : {
+							 if (iType == 0 && !IS_NAN(aCalItem->fTimeV_rb_ns))  goto skip_event_pileup;
+							 if (iType == 1 && !IS_NAN(aCalItem->fTimeL_rb_ns))  goto skip_event_pileup;
+							 if (iType == 2 && !IS_NAN(aCalItem->fTimeT_rb_ns))  goto skip_event_pileup;
+						 } break;
+					case 7 : {
+							 if (iType == 0 && !IS_NAN(aCalItem->fTimeV_rt_ns)) goto skip_event_pileup;
+							 if (iType == 1 && !IS_NAN(aCalItem->fTimeL_rt_ns)) goto skip_event_pileup;
+							 if (iType == 2 && !IS_NAN(aCalItem->fTimeT_rt_ns)) goto skip_event_pileup;
+						 } break;        				   
+					case 2 : {
+							 if (iType == 0 && !IS_NAN(aCalItem->fTimeV_l_ns))  goto skip_event_pileup;
+							 if (iType == 1 && !IS_NAN(aCalItem->fTimeL_l_ns))  goto skip_event_pileup;
+							 if (iType == 2 && !IS_NAN(aCalItem->fTimeT_l_ns))  goto skip_event_pileup;
+						 } break;
+					case 4 : {
+							 if (iType == 0 && !IS_NAN(aCalItem->fTimeV_b_ns))  goto skip_event_pileup;
+							 if (iType == 1 && !IS_NAN(aCalItem->fTimeL_b_ns))  goto skip_event_pileup;
+							 if (iType == 2 && !IS_NAN(aCalItem->fTimeT_b_ns))  goto skip_event_pileup;
+						 } break;
+					case 6 : {
+							 if (iType == 0 && !IS_NAN(aCalItem->fTimeV_r_ns))  goto skip_event_pileup;
+							 if (iType == 1 && !IS_NAN(aCalItem->fTimeL_r_ns))  goto skip_event_pileup;
+							 if (iType == 2 && !IS_NAN(aCalItem->fTimeT_r_ns))  goto skip_event_pileup;
+						 } break;
+					case 8 : {
+							 if (iType == 0 && !IS_NAN(aCalItem->fTimeV_t_ns))  goto skip_event_pileup;
+							 if (iType == 1 && !IS_NAN(aCalItem->fTimeL_t_ns))  goto skip_event_pileup;
+							 if (iType == 2 && !IS_NAN(aCalItem->fTimeT_t_ns))  goto skip_event_pileup;
+						 } break;
+
+				}
+				if (!calItem)
+					calItem=aCalItem;
+			} 
         
-       if (!par)
-       {
-           LOG(INFO) << "R3BLosMapped2Cal::Exec : Tcal par not found, Detector: " << 
-           iDet << ", Channel: " << iCha << FairLogger::endl;
-           continue;
-       }
-       
-       // Convert TDC to [ns] ...
-       Double_t time_ns = par->GetTimeVFTX( hit->GetTimeFine() );
-
-       if (time_ns < 0. || time_ns > fClockFreq )
-       {
-           LOG(ERROR) << 
-           "R3BLosMapped2Cal::Exec : bad time in ns: det= " << iDet << 
-           ", ch= " << iCha << 
-           ", time in channels = " << hit->GetTimeFine() <<
-           ", time in ns = " << time_ns  << FairLogger::endl;
-           continue;
-       }
-
-	   // ... and add clock time
-       time_ns = fClockFreq-time_ns + hit->GetTimeCoarse() * fClockFreq;
-       
-       /* Note: we have multi-hit data...
-        *  
-        * So the map needs to have one item per detector and (multi-)hit
-        * Then we need to establish a time window
-        * Here, we have the hits unsorted in time and channel. If we 
-        * reconstruct a detector hit using a time window, So:
-        * 
-        * For each single hit, search the list of detector hits. If a
-        * matching hit is found (dt < window and item not yet set), add
-        * item. Else create new detector hit.
-        * 
-        * This way, we theoretically *might* end up with two calItems 
-        * which are actually just one. Hm... this should be very rare. 
-        * Care about that later if it becomes necessary. 
-        * 
-        * Even though we have technically two LOS detectors in s438b,
-        * only one really produces data so it's ok to throw all
-        * detector hits into the same list (and hence traversing a longer
-        * list than strictly necessary for the reconstruction)
-        */
-               
-       // see if there is already a detector hit around that time 
-       R3BLosCalData* calItem=NULL;
-       for (int iCal=0;iCal<fNofCalItems;iCal++)
-       {
-		   R3BLosCalData* aCalItem=(R3BLosCalData*)fCalItems->At(iCal);
-//cout<<aCalItem<<" "<<iDet<<" "<<(int)aCalItem->GetDetector()<<endl;
-		   if (aCalItem->GetDetector() != iDet) {
-		   	// Do not consider an item for another detector.
-		   	continue;
-		   }
-		   if (1 == iDet && fabs(aCalItem->GetMeanTime()-time_ns) < LOS_COINC_WINDOW_NS)
-		   {
-			   // check if item is already set. If so, we need to skip this event!
-			   switch (iCha)
-			   {
-				   case 1 : if (!IS_NAN(aCalItem->fTime_r_ns))   LOG(ERROR) << "R3BLosMapped2Cal::Exec : Skip event because of unhandle-able pileup." << FairLogger::endl;break;
-				   case 2 : if (!IS_NAN(aCalItem->fTime_t_ns))   LOG(ERROR) << "R3BLosMapped2Cal::Exec : Skip event because of unhandle-able pileup." << FairLogger::endl;break;
-				   case 3 : if (!IS_NAN(aCalItem->fTime_l_ns))   LOG(ERROR) << "R3BLosMapped2Cal::Exec : Skip event because of unhandle-able pileup." << FairLogger::endl;break;
-				   case 4 : if (!IS_NAN(aCalItem->fTime_b_ns))   LOG(ERROR) << "R3BLosMapped2Cal::Exec : Skip event because of unhandle-able pileup." << FairLogger::endl;break;
-				   case 5 : if (!IS_NAN(aCalItem->fTime_ref_ns)) LOG(ERROR) << "R3BLosMapped2Cal::Exec : Skip event because of unhandle-able pileup." << FairLogger::endl;break;
-			   }
-			   calItem=aCalItem;
-			   break;
-		   }
-		   else if (2 == iDet) {
-		   	// Do nothing special for Cherenkov, yet.
-			   calItem=aCalItem;
-			   break;
-		   }
-	   
-	    
-       }
-       if (!calItem)
-       {
-		    // there is no detector hit with matching time. Hence, create a new one.
+		}
+		if (!calItem)
+		{
+			// there is no detector hit with matching time. Hence, create a new one.
 			calItem = new ((*fCalItems)[fNofCalItems]) R3BLosCalData(iDet);
 			fNofCalItems += 1;
-	   }
-	   // set the time to the correct cal item
-	   if (1 == iDet) {
-		   switch (iCha)
-		   {
-			   case 1 : calItem->fTime_r_ns   = time_ns;break;
-			   case 2 : calItem->fTime_t_ns   = time_ns;break;
-			   case 3 : calItem->fTime_l_ns   = time_ns;break;
-			   case 4 : calItem->fTime_b_ns   = time_ns;break;
-			   case 5 : calItem->fTime_ref_ns = time_ns;break;
-			   default: LOG(INFO) << "R3BLosMapped2Cal::Exec : Channel number out of range: " << 
-	           iCha << FairLogger::endl;
-		   }
-	   }
-	   else if (2 == iDet) {
-	 	   switch (iCha)
-		   {
-			   case 1 : calItem->fTime_cherenkov_l_ns = time_ns;/*cout<<calItem<<" Cher_l "<<time_ns<<endl;*/break;
-			   case 2 : calItem->fTime_cherenkov_r_ns = time_ns;/*cout<<calItem<<" Cher_r "<<time_ns<<endl;*/break;
-			   default: LOG(INFO) << "R3BLosMapped2Cal::Exec : Channel number out of range: " << 
-	           iCha << FairLogger::endl;
-		   }
-	   }
-    }
-//cout<<"Done"<<endl;
+		}
+		// set the time to the correct cal item       
+
+		if(iCha == 8) 
+		{ 
+
+			if(iType == 0) {
+				calItem->fTimeV_t_ns   = times_ns;
+				if ( calItem->fTimeV_t_ns < 0. || IS_NAN(calItem->fTimeV_t_ns) ) LOG(INFO)<<"Problem with  fTimeV_t_ns: "<< calItem->fTimeV_t_ns<< " "<<times_ns<<" "<<endl;
+			}
+
+			if(iType == 1) {
+				calItem->fTimeL_t_ns   = times_ns;
+				if ( calItem->fTimeL_t_ns < 0. || IS_NAN(calItem->fTimeL_t_ns) ) LOG(INFO)<<"Problem with  fTimeL_t_ns: "<< calItem->fTimeL_t_ns<< " "<<times_ns<<" "<<endl;	
+			}
+
+			if(iType == 2) {
+				calItem->fTimeT_t_ns   = times_ns;
+				if ( calItem->fTimeT_t_ns < 0. || IS_NAN(calItem->fTimeT_t_ns) ) LOG(INFO)<<"Problem with  fTimeT_t_ns: "<< calItem->fTimeT_t_ns<< " "<<times_ns<<" "<<endl;					      
+			}
+		}		  	
+		if(iCha == 2)   
+		{ 
+
+			if(iType == 0) {
+				calItem->fTimeV_l_ns   = times_ns;
+				if ( calItem->fTimeV_l_ns < 0. || IS_NAN(calItem->fTimeV_l_ns) ) LOG(INFO)<<"Problem with  fTimeV_l_ns: "<< calItem->fTimeV_l_ns<< " "<<times_ns<<" "<<endl;
+			}
+
+			if(iType == 1) {
+				calItem->fTimeL_l_ns   = times_ns;
+				if ( calItem->fTimeL_l_ns < 0. || IS_NAN(calItem->fTimeL_l_ns) ) LOG(INFO)<<"Problem with  fTimeL_l_ns: "<< calItem->fTimeL_l_ns<< " "<<times_ns<<" "<<endl;	
+			}
+
+			if(iType == 2) {
+				calItem->fTimeT_l_ns   = times_ns;
+				if ( calItem->fTimeT_l_ns < 0. || IS_NAN(calItem->fTimeT_l_ns) ) LOG(INFO)<<"Problem with  fTimeT_l_ns: "<< calItem->fTimeT_l_ns<< " "<<times_ns<<" "<<endl;					      
+			}
+		}		  
+		if(iCha == 4)   
+		{ 
+
+			if(iType == 0) {
+				calItem->fTimeV_b_ns   = times_ns;
+				if ( calItem->fTimeV_b_ns < 0. || IS_NAN(calItem->fTimeV_b_ns) ) LOG(INFO)<<"Problem with  fTimeV_b_ns: "<< calItem->fTimeV_b_ns<< " "<<times_ns<<" "<<endl;
+			}
+
+			if(iType == 1) {
+				calItem->fTimeL_b_ns   = times_ns;
+				if ( calItem->fTimeL_b_ns < 0. || IS_NAN(calItem->fTimeL_b_ns) ) LOG(INFO)<<"Problem with  fTimeL_b_ns: "<< calItem->fTimeL_b_ns<< " "<<times_ns<<" "<<endl;	
+			}
+
+			if(iType == 2) {
+				calItem->fTimeT_b_ns   = times_ns;
+				if ( calItem->fTimeT_b_ns < 0. || IS_NAN(calItem->fTimeT_b_ns) ) LOG(INFO)<<"Problem with  fTimeT_b_ns: "<< calItem->fTimeT_b_ns<< " "<<times_ns<<" "<<endl;					      
+			}
+		}	
+		if(iCha == 6)   
+		{ 
+
+			if(iType == 0) {
+				calItem->fTimeV_r_ns   = times_ns;
+				if ( calItem->fTimeV_r_ns < 0. || IS_NAN(calItem->fTimeV_r_ns) ) LOG(INFO)<<"Problem with  fTimeV_r_ns: "<< calItem->fTimeV_r_ns<< " "<<times_ns<<" "<<endl;
+			}		
+
+			if(iType == 1) {
+				calItem->fTimeL_r_ns   = times_ns;
+				if ( calItem->fTimeL_r_ns < 0. || IS_NAN(calItem->fTimeL_r_ns) ) LOG(INFO)<<"Problem with  fTimeL_r_ns: "<< calItem->fTimeL_r_ns<< " "<<times_ns<<" "<<endl;	
+			}
+
+			if(iType == 2) {
+				calItem->fTimeT_r_ns   = times_ns;
+				if ( calItem->fTimeT_r_ns < 0. || IS_NAN(calItem->fTimeT_r_ns) ) LOG(INFO)<<"Problem with  fTimeT_r_ns: "<< calItem->fTimeT_r_ns<< " "<<times_ns<<" "<<endl;					      
+			}
+		}		  	  
+		if(iCha == 1)   
+		{ 
+
+			if(iType == 0) {
+				calItem->fTimeV_lt_ns   = times_ns;
+				if ( calItem->fTimeV_lt_ns < 0. || IS_NAN(calItem->fTimeV_lt_ns) ) LOG(INFO)<<"Problem with  fTimeV_lt_ns: "<< calItem->fTimeV_lt_ns<< " "<<times_ns<<" "<<endl;
+			}
+
+			if(iType == 1) {
+				calItem->fTimeL_lt_ns   = times_ns;
+				if ( calItem->fTimeL_lt_ns < 0. || IS_NAN(calItem->fTimeL_lt_ns) ) LOG(INFO)<<"Problem with  fTimeL_lt_ns: "<< calItem->fTimeL_lt_ns<< " "<<times_ns<<" "<<endl;	
+			}
+
+			if(iType == 2) {
+				calItem->fTimeT_lt_ns   = times_ns;
+				if ( calItem->fTimeT_lt_ns < 0. || IS_NAN(calItem->fTimeT_lt_ns) ) LOG(INFO)<<"Problem with  fTimeT_lt_ns: "<< calItem->fTimeT_lt_ns<< " "<<times_ns<<" "<<endl;					      
+			}
+		}	
+		if(iCha == 3)   
+		{ 
+
+			if(iType == 0) {
+				calItem->fTimeV_lb_ns   = times_ns;
+				if ( calItem->fTimeV_lb_ns < 0. || IS_NAN(calItem->fTimeV_lb_ns) ) LOG(INFO)<<"Problem with  fTimeV_lb_ns: "<< calItem->fTimeV_lb_ns<< " "<<times_ns<<" "<<endl;
+			}
+
+			if(iType == 1) {
+				calItem->fTimeL_lb_ns   = times_ns;
+				if ( calItem->fTimeL_lb_ns < 0. || IS_NAN(calItem->fTimeL_lb_ns) ) LOG(INFO)<<"Problem with  fTimeL_lb_ns: "<< calItem->fTimeL_lb_ns<< " "<<times_ns<<" "<<endl;	
+			}
+
+			if(iType == 2) {
+				calItem->fTimeT_lb_ns   = times_ns;
+				if ( calItem->fTimeT_lb_ns < 0. || IS_NAN(calItem->fTimeT_lb_ns) ) LOG(INFO)<<"Problem with  fTimeT_lb_ns: "<< calItem->fTimeT_lb_ns<< " "<<times_ns<<" "<<endl;					      
+			}
+		}		  
+		if(iCha == 5)   
+		{ 
+
+			if(iType == 0) {
+				calItem->fTimeV_rb_ns   = times_ns;
+				if ( calItem->fTimeV_rb_ns < 0. || IS_NAN(calItem->fTimeV_rb_ns) ) LOG(INFO)<<"Problem with  fTimeV_rb_ns: "<< calItem->fTimeV_rb_ns<< " "<<times_ns<<" "<<endl;
+			}
+
+			if(iType == 1) {
+				calItem->fTimeL_rb_ns   = times_ns;
+				if ( calItem->fTimeL_rb_ns < 0. || IS_NAN(calItem->fTimeL_rb_ns) ) LOG(INFO)<<"Problem with  fTimeL_rb_ns: "<< calItem->fTimeL_rb_ns<< " "<<times_ns<<" "<<endl;	
+			}
+
+			if(iType == 2) {
+				calItem->fTimeT_rb_ns   = times_ns;
+				if ( calItem->fTimeT_rb_ns < 0. || IS_NAN(calItem->fTimeT_rb_ns) ) LOG(INFO)<<"Problem with  fTimeT_rb_ns: "<< calItem->fTimeT_rb_ns<< " "<<times_ns<<" "<<endl;					      
+			}
+		}
+		if(iCha == 7)   
+		{ 
+
+			if(iType == 0) {
+				calItem->fTimeV_rt_ns   = times_ns;
+				if ( calItem->fTimeV_rt_ns < 0. || IS_NAN(calItem->fTimeV_rt_ns) ) LOG(INFO)<<"Problem with  fTimeV_rt_ns: "<< calItem->fTimeV_rt_ns<< " "<<times_ns<<" "<<endl;
+			}
+
+			if(iType == 1) {
+				calItem->fTimeL_rt_ns   = times_ns;
+				if ( calItem->fTimeL_rt_ns < 0. || IS_NAN(calItem->fTimeL_rt_ns) ) LOG(INFO)<<"Problem with  fTimeL_rt_ns: "<< calItem->fTimeL_rt_ns<< " "<<times_ns<<" "<<endl;	
+			}
+
+			if(iType == 2) {
+				calItem->fTimeT_rt_ns   = times_ns;
+				if ( calItem->fTimeT_rt_ns < 0. || IS_NAN(calItem->fTimeT_rt_ns) ) LOG(INFO)<<"Problem with  fTimeT_rt_ns: "<< calItem->fTimeT_rt_ns<< " "<<times_ns<<" "<<endl;					      
+			}
+		} 
     
+	//if(fNEvent == 9698 || fNEvent == 9701 || fNEvent == 9704) cout<<"Mapped2Cal "<<fNEvent<<"; "<<nHits<<", "<<iCha<<", "<<iType<<", "<<times_ns<<", "<<hit->GetTimeFine()<<", "<<hit->GetTimeCoarse()<<endl;		  			
+
+		continue;
+skip_event_pileup:
+				LOG(WARNING) << "R3BLosMapped2Cal::Exec : " << fNEvent
+					<< " iCha: " << iCha 
+					<< " iType: " << iType
+					<< " iCal: " << iCal
+					<< " Skip event because of pileup."
+					<< FairLogger::endl;
+	
+	}
+  	
+	
+	++fNEvent;
+	
+	
 }
 
 void R3BLosMapped2Cal::FinishEvent()

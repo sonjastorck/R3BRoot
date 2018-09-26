@@ -24,9 +24,12 @@ endforeach()
 # after check of cmake version
 project(R3BROOT)
 
+If (NOT EXISTS "${PROJECT_SOURCE_DIR}/macros")
+  Message( FATAL_ERROR "\nmacros repository is missing in the R3BRoot source directory\ncd ../R3BRoot\ngit clone https://github.com/R3BRootGroup/macros.git" )
+EndIf (NOT EXISTS "${PROJECT_SOURCE_DIR}/macros")
+
 # Check if the FairRoot is still in source, since Jan 2014 FairRoot
 # should be installed separately
-
 FIND_PATH(FAIRBASE NAMES FairRun.h  PATHS
   ${CMAKE_SOURCE_DIR}/base/steer
   NO_DEFAULT_PATH
@@ -48,6 +51,8 @@ Else (FAIRBASE)
 
 EndIf (FAIRBASE)
 
+#added a variable to point to r3broot path in the system
+SET( R3BROOTPATH ${CMAKE_INSTALL_PREFIX} )
 
 # where to look first for cmake modules, before ${CMAKE_ROOT}/Modules/
 # is checked
@@ -79,7 +84,7 @@ include(CheckCXX11Features)
 # Load some basic macros which are needed later on
 include(FairMacros)
 include(R3BMacros)
-include(WriteConfigFile)
+include(WriteConfigFile_r3b)
 include(Dart)
 include(CheckCompiler)
 include(WriteEnvCache)
@@ -351,13 +356,26 @@ add_subdirectory (califa)
 add_subdirectory (xball)
 add_subdirectory (dch)
 add_subdirectory (gfi)
+add_subdirectory (fiber)
+add_subdirectory (fi1a)
+add_subdirectory (fi1b)
+add_subdirectory (fi2a)
+add_subdirectory (fi2b)
+add_subdirectory (fi3a)
+add_subdirectory (fi3b)
 add_subdirectory (fi4)
-add_subdirectory (fi6)
 add_subdirectory (fi5)
+add_subdirectory (fi6)
+add_subdirectory (fi7)
+add_subdirectory (fi8)
+add_subdirectory (fi9)
+add_subdirectory (fi10)
+add_subdirectory (fi11)
 add_subdirectory (sfi)
 add_subdirectory (land)
 add_subdirectory (neuland)
 add_subdirectory (los)
+add_subdirectory (sci8)
 add_subdirectory (mtof)
 add_subdirectory (dtof)
 add_subdirectory (tof)
@@ -394,6 +412,13 @@ IF(EXISTS "${R3BROOT_SOURCE_DIR}/glad-tpc/")
   add_definitions(-DGTPC)
   add_subdirectory(glad-tpc)
 ENDIF(EXISTS "${R3BROOT_SOURCE_DIR}/glad-tpc/")
+
+IF(EXISTS "${R3BROOT_SOURCE_DIR}/frs/")
+  Message("Building FRS framework...")
+  Set(WITH_FRS true)
+  add_definitions(-DFRS)
+  add_subdirectory(frs)
+ENDIF(EXISTS "${R3BROOT_SOURCE_DIR}/frs/")
 
 ENDIF (NOT MODULE)
 

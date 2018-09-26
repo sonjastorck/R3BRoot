@@ -10,6 +10,7 @@
 #include "R3BFi4Point.h"
 //#include "R3BGeoFi4.h"
 #include "R3BMCStack.h"
+#include "R3BTGeoPar.h"
 #include "TClonesArray.h"
 #include "TGeoArb8.h"
 #include "TGeoBBox.h"

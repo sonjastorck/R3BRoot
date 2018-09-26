@@ -118,6 +118,7 @@ InitStatus R3BTofdMapped2TCalPar::Init()
     return kSUCCESS;
 }
 
+// HTT: TODO: Get rid of paddle structure in mapped level, calibration does not care.
 void R3BTofdMapped2TCalPar::Exec(Option_t* option)
 {
 	// test for requested trigger (if possible)
@@ -125,38 +126,57 @@ void R3BTofdMapped2TCalPar::Exec(Option_t* option)
 		return;
 
     Int_t nHits = fMapped->GetEntries();
-
+     
     // Loop over mapped hits
     for (Int_t i = 0; i < nHits; i++)
     {
-		
         R3BPaddleTamexMappedData* hit = (R3BPaddleTamexMappedData*)fMapped->At(i);
         if (!hit) continue; // should not happen
 
         Int_t iPlane = hit->GetPlaneId(); // 1..n
         Int_t iBar   = hit->GetBarId();   // 1..n
-        Int_t iSide  = hit->GetSide();    // 1 or 2	                
+        Int_t iSide  = hit->GetSideId();  // 1/2
+        Int_t iEdge  = hit->GetEdgeId();  // 1/2
         
-        if (iPlane>=fNofPlanes) // this also errors for iDetector==0
+        if (iPlane>fNofPlanes) // this also errors for iDetector==0
         {
-            LOG(ERROR) << "R3BTofdMapped2TCalPar::Exec() : more detectors than expected! Det: " << iPlane << " allowed are 1.." << fNofPlanes << FairLogger::endl;
+            LOG(ERROR) << "R3BTofdMapped2TCalPar::Exec() : more planes than expected! Plane: " << iPlane << " allowed are 1.." << fNofPlanes << FairLogger::endl;
             continue;
         }
-        if (iBar>=fPaddlesPerPlane) // same here
+        if (iBar>fPaddlesPerPlane) // same here
         {
             LOG(ERROR) << "R3BTofdMapped2TCalPar::Exec() : more bars then expected! Det: " << iBar << " allowed are 1.." << fPaddlesPerPlane << FairLogger::endl;
             continue;
         }
 
+	Int_t timetemp;
+	Int_t edge = iSide * 2 + iEdge - 2;
+	if (1 == iSide) {
+		if (1 == iEdge) {
+			timetemp = hit->GetFineTime1LE();
+		} else {
+			timetemp = hit->GetFineTime1TE();
+		}
+	} else {
+		if (1 == iEdge) {
+			timetemp = hit->GetFineTime2LE();
+		} else {
+			timetemp = hit->GetFineTime2TE();
+		}
+	}	
+	  
+//         cout<<"Mapped2CalPar: edge_tot="<<i<<", plane="<<iPlane<<", bar="<<iBar<<", edge="<<edge<<", "<<timetemp<<endl;
+         fEngine->Fill(iPlane, iBar, edge, timetemp);
 
+/*	
 		for (Int_t edge=0;edge<2;edge++)
-		{
-	
+		{	
 	        // Fill TAC histogram
 	        //fEngine->Fill(iModule, hit->GetFineTime(edge));
-	        fEngine->Fill(iPlane, iBar, (iSide-1)*2 + edge+1, hit->GetFineTime(edge));
-
+	        fEngine->Fill(iPlane, iBar, 0 + edge+1, hit->GetFineTime(0,edge));
+	        fEngine->Fill(iPlane, iBar, 2 + edge+1, hit->GetFineTime(1,edge));
 	    }
+	  */
     }
 
     // Increment events

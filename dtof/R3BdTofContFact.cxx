@@ -16,6 +16,7 @@
 //#include "R3BmTofParAsciiFileIo.h"
 #include "R3BGeodTofPar.h"
 //#include "R3BmTofDigiPar.h"
+#include "R3BTGeoPar.h"
 
 #include "FairRuntimeDb.h"
 //#include "CbmParTest.h"
@@ -59,25 +60,33 @@ void R3BdTofContFact::setAllContainers() {
     containers->Add(p1);
     containers->Add(p2);
     */
+    
+    FairContainer* p2 = new FairContainer("tofdGeoPar", "Tofd geometry parameters", "TestDefaultContext");
+    p2->addContext("TestNonDefaultContext");
+    containers->Add(p2);
 }
 
 FairParSet* R3BdTofContFact::createContainer(FairContainer* c) {
   /** mTofls the constructor of the corresponding parameter container.
    * For an actual context, which is not an empty string and not the default context
    * of this container, the name is concatinated with the context. */
-  /*
+  
   const char* name=c->GetName();
   cout << " -I container name " << name << endl;
   FairParSet* p=0;
-  if (strcmp(name,"R3BmTofDigiPar")==0) {
+  /*if (strcmp(name,"R3BmTofDigiPar")==0) {
     p=new R3BmTofDigiPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
   }
   if (strcmp(name,"CbmGeoStsPar")==0) {
     p=new CbmGeoStsPar(c->getConcatName().Data(),c->GetTitle(),c->getContext());
-  }
+  }*/
+    
+    if (strcmp(name, "tofdGeoPar") == 0)
+    {
+        p = new R3BTGeoPar(c->getConcatName().Data(), c->GetTitle(), c->getContext());
+    }
+    
   return p;
-  */
-  return NULL;
 }
 
 void  R3BdTofContFact::activateParIo(FairParIo* io) {

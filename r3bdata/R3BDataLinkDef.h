@@ -8,6 +8,7 @@
 
 #pragma link C++ class R3BStack+;
 #pragma link C++ class R3BMCTrack+;
+#pragma link C++ class R3BHit+;
 
 #pragma link C++ class R3BXBallPoint+;
 #pragma link C++ class R3BXBallCrystalHit+;
@@ -33,6 +34,9 @@
 #pragma link C++ class R3BVetoPoint+;
 #pragma link C++ class R3BStartrackPoint+;
 #pragma link C++ class R3BStartrackHit+;
+#pragma link C++ class R3BAmsMappedData+;
+#pragma link C++ class R3BAmsStripCalData+;
+#pragma link C++ class R3BAmsHitData+;
 
 //#pragma link C++ class R3BStartrackerHit+;
 
@@ -72,6 +76,9 @@
 #pragma link C++ class R3BLosMappedData+;
 #pragma link C++ class R3BLosCalData+;
 #pragma link C++ class R3BLosHitData+;
+#pragma link C++ class R3BSci8MappedData+;
+#pragma link C++ class R3BSci8CalData+;
+#pragma link C++ class R3BSci8HitData+;
 #pragma link C++ class R3BPaddleTamexMappedData+;
 #pragma link C++ class R3BPaddleCalData+;
 #pragma link C++ class R3BTofdHitData+;
@@ -80,8 +87,16 @@
 #pragma link C++ class R3BStrawtubesMappedData+;
 #pragma link C++ class R3BStrawtubesCalData+;
 #pragma link C++ class R3BStrawtubesHitData+;
-#pragma link C++ class R3BFi4MappedItem+;
+#pragma link C++ class R3BPtofHit+;
+#pragma link C++ class R3BBunchedFiberCalData+;
+#pragma link C++ class R3BBunchedFiberHitData+;
+#pragma link C++ class R3BBunchedFiberMappedData+;
+#pragma link C++ class R3BFi4Point+;
 #pragma link C++ class R3BFi4CalItem+;
 #pragma link C++ class R3BFi4HitItem+;
-#pragma link C++ class R3BFi4Point+;
+#pragma link C++ class R3BFi7Point+;
+#pragma link C++ class R3BFi7HitItem+;
+#pragma link C++ class R3BFibMappedData+;
+#pragma link C++ class R3BFibCalData+;
+
 #endif

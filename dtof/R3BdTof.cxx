@@ -10,6 +10,7 @@
 #include "R3BGeodTof.h"
 #include "R3BGeodTofPar.h"
 #include "R3BMCStack.h"
+#include "R3BTGeoPar.h"
 #include "R3BdTofPoint.h"
 #include "TClonesArray.h"
 #include "TGeoArb8.h"
